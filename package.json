@@ -14,8 +14,10 @@
     "express": "^4.17.1",
     "express-fileupload": "^1.2.1",
     "formidable": "^1.2.2",
-    "ipfs": "^0.53.2",
-    "pm2": "^4.5.2",
+    "ipfs": "^0.54.4",
+    "ipfs-cluster-api": "0.0.9",
+    "ipfs-http-client": "^49.0.4",
+    "pm2": "^4.5.6",
     "prom-client": "^13.1.0",
     "wrtc": "^0.4.7"
   }

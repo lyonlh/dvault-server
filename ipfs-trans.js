@@ -1,5 +1,8 @@
-const fs = require('fs');
-const IPFS = require('ipfs');
+const fs = require('fs')
+const Path = require('path')
+//const IPFS = require('ipfs');
+const create = require('ipfs-http-client')
+const ipfsCluster = require('ipfs-cluster-api')
 const uint8ArrayConcat = require('uint8arrays/concat')
 const CID = require('cids')
 
@@ -8,9 +11,12 @@ function delayPromise (milliseconds) {
 }
 var IPFSXfer = {
   node :{},
+  cluster :{},
   version: {},
   start : async () => {
-	  node = await IPFS.create();
+	  //node = await IPFS.create();
+	  node = create();
+	  cluster = ipfsCluster('/ip4/127.0.0.1/tcp/9094');
 /*	  
  	  node = await IPFS.create(
 	{
@@ -48,23 +54,22 @@ var IPFSXfer = {
     	}}
 	}});
 */
-	version = await node.version();
-	nodeId = await node.id();
+	version = await cluster.version();
+	nodeId = await cluster.id();
 	console.log('Version:', version.version);
 	console.log('ID:', nodeId);
 
-	var cron = require('cron');
-	var cronJob = cron.job("0 0 * * * *", function(){
-			node.id()
-			.then(peerInfo => console.log('My addresses are:', peerInfo.addresses))
-			.then(() => console.log('Waiting for some peers...'))
-			//.then(() => delayPromise(15 * 1000))
-			.then(() => node.swarm.peers())
-			.then(peers => peers.map(peer => peer.addr.toString()))
-			.then(peers => console.log('Peers I am connected to:', peers))
-			.catch(error => console.error('UHOH:', error));
-			}); 
-	cronJob.start();
+	//var cron = require('cron');
+	//var cronJob = cron.job("0 0 * * * *", function(){
+	//		cluster.id()
+	//		.then(peerInfo => console.log('My addresses are:', peerInfo.addresses))
+	//		.then(() => console.log('Waiting for some peers...'))
+	//		.then(() => cluster.peers.ls())
+	//		.then(peers => peers.map(peer => peer.addr.toString()))
+	//		.then(peers => console.log('Peers I am connected to:', peers))
+	//		.catch(error => console.error('UHOH:', error));
+	//		}); 
+	//cronJob.start();
   },
 
   download : async (hash) =>
@@ -90,16 +95,22 @@ var IPFSXfer = {
     {
       let testFile = fs.readFileSync(path);
       let testBuffer = Buffer.from(testFile);
-      const filesAdded = await node.add(testBuffer, {pin: false});
-      const hash = filesAdded.cid.toString();
-      node.pin.add(hash, {recursive: false});
-      console.log('Added file:', filesAdded.path, hash);
+      const filesAdded = await cluster.add({path: Path.basename(path), content: testBuffer});
+      console.log('filesAdded: ', filesAdded);
+      const fileUp = filesAdded[0];
+      const hash = fileUp.hash 
+      cluster.pin.add(hash, {replication: 1}, (err) => {
+		      err ? console.error(err) : console.log('pin added')
+		      });
+      console.log('Added file:', fileUp.path, hash);
 
       return hash;
     },
   unpin: async(hash) =>
     {
-      await node.pin.rm(hash);
+      cluster.pin.rm(hash, (err) => {
+			 err ? console.error(err) : console.log(`${CID} unpinned`)
+				 });
     }
 };
 
